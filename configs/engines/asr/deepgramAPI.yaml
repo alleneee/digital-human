@@ -1,0 +1,8 @@
+# Deepgram ASR 配置
+NAME: DeepgramAPI
+API_KEY: ${DEEPGRAM_API_KEY}  # 从环境变量获取
+LANGUAGE: zh-CN  # 默认语言
+MODEL: nova-2  # 使用的模型
+SMART_FORMAT: true  # 启用智能格式化
+DIARIZE: false  # 是否启用说话人分离
+DETECT_LANGUAGE: false  # 是否启用语言检测

@@ -1,0 +1,47 @@
+.status-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 15px;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 5px var(--shadow-color);
+  margin-top: 10px;
+  font-size: 0.9em;
+  transition: background-color 0.3s;
+}
+
+.dark-theme .status-bar {
+  background-color: #333;
+}
+
+.status-indicator {
+  display: flex;
+  align-items: center;
+}
+
+.status-icon {
+  margin-right: 8px;
+  font-size: 0.8em;
+}
+
+.status-icon.online {
+  color: var(--success-color);
+}
+
+.status-icon.offline {
+  color: var(--error-color);
+}
+
+.status-icon.connecting {
+  color: var(--warning-color);
+}
+
+.status-text {
+  color: var(--text-color);
+}
+
+.app-version {
+  color: var(--light-text);
+  font-size: 0.9em;
+}

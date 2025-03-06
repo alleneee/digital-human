@@ -1,0 +1,5 @@
+NAME: DeepgramAPI
+API_KEY: ${DEEPGRAM_API_KEY}  # 从环境变量获取
+VOICE: aura                   # 默认声音
+MODEL: aura                   # 默认模型
+SAMPLE_RATE: 16000            # 采样率

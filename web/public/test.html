@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>数字人测试页面</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 20px auto; line-height: 1.6; }
+        .box { border: 1px solid #ccc; padding: 15px; margin-bottom: 20px; }
+        button { margin: 5px; padding: 8px 15px; }
+        #wsStatus { font-weight: bold; }
+        #wsMessages, #apiResponses { height: 150px; overflow-y: auto; background: #f5f5f5; padding: 10px; }
+    </style>
+</head>
+<body>
+    <h1>数字人系统测试</h1>
+    
+    <div class="box">
+        <h2>WebSocket 连接测试</h2>
+        <div>
+            状态: <span id="wsStatus">未连接</span>
+        </div>
+        <div>
+            <button id="connectWs">连接 WebSocket</button>
+            <button id="disconnectWs">断开连接</button>
+            <button id="sendTestMessage">发送测试消息</button>
+        </div>
+        <h3>WebSocket 消息:</h3>
+        <div id="wsMessages"></div>
+    </div>
+    
+    <div class="box">
+        <h2>API 测试</h2>
+        <div>
+            <button id="testConfigApi">测试配置 API</button>
+            <button id="testVideoApi">测试视频生成 API</button>
+        </div>
+        <h3>API 响应:</h3>
+        <div id="apiResponses"></div>
+    </div>
+
+    <script>
+        // DOM 元素
+        const wsStatus = document.getElementById('wsStatus');
+        const wsMessages = document.getElementById('wsMessages');
+        const apiResponses = document.getElementById('apiResponses');
+        const connectWsBtn = document.getElementById('connectWs');
+        const disconnectWsBtn = document.getElementById('disconnectWs');
+        const sendTestMessageBtn = document.getElementById('sendTestMessage');
+        const testConfigApiBtn = document.getElementById('testConfigApi');
+        const testVideoApiBtn = document.getElementById('testVideoApi');
+        
+        // 全局变量
+        let socket = null;
+        
+        // 辅助函数
+        function addWsMessage(message) {
+            const div = document.createElement('div');
+            div.textContent = `${new Date().toLocaleTimeString()}: ${message}`;
+            wsMessages.appendChild(div);
+            wsMessages.scrollTop = wsMessages.scrollHeight;
+        }
+        
+        function addApiResponse(message) {
+            const div = document.createElement('div');
+            div.textContent = `${new Date().toLocaleTimeString()}: ${message}`;
+            apiResponses.appendChild(div);
+            apiResponses.scrollTop = apiResponses.scrollHeight;
+        }
+        
+        // WebSocket 相关功能
+        connectWsBtn.addEventListener('click', () => {
+            if (socket) {
+                addWsMessage('已经连接，请先断开');
+                return;
+            }
+            
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/ws`;
+            
+            addWsMessage(`尝试连接到 ${wsUrl}`);
+            
+            socket = new WebSocket(wsUrl);
+            
+            socket.onopen = () => {
+                wsStatus.textContent = '已连接';
+                wsStatus.style.color = 'green';
+                addWsMessage('连接已建立');
+            };
+            
+            socket.onmessage = (event) => {
+                addWsMessage(`收到消息: ${event.data}`);
+            };
+            
+            socket.onclose = () => {
+                wsStatus.textContent = '已断开';
+                wsStatus.style.color = 'red';
+                addWsMessage('连接已关闭');
+                socket = null;
+            };
+            
+            socket.onerror = (error) => {
+                wsStatus.textContent = '连接错误';
+                wsStatus.style.color = 'red';
+                addWsMessage(`连接错误: ${error}`);
+            };
+        });
+        
+        disconnectWsBtn.addEventListener('click', () => {
+            if (!socket) {
+                addWsMessage('未连接');
+                return;
+            }
+            
+            socket.close();
+            wsStatus.textContent = '已断开';
+            wsStatus.style.color = 'red';
+            addWsMessage('连接已手动关闭');
+            socket = null;
+        });
+        
+        sendTestMessageBtn.addEventListener('click', () => {
+            if (!socket || socket.readyState !== WebSocket.OPEN) {
+                addWsMessage('未连接到服务器');
+                return;
+            }
+            
+            const testMessage = {
+                type: 'test',
+                text: '这是一条测试消息',
+                timestamp: new Date().toISOString()
+            };
+            
+            socket.send(JSON.stringify(testMessage));
+            addWsMessage(`已发送: ${JSON.stringify(testMessage)}`);
+        });
+        
+        // API 测试功能
+        testConfigApiBtn.addEventListener('click', async () => {
+            try {
+                addApiResponse('测试配置 API...');
+                const response = await fetch('/api/update_config', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({})
+                });
+                
+                const data = await response.json();
+                addApiResponse(`配置 API 响应: ${JSON.stringify(data)}`);
+            } catch (error) {
+                addApiResponse(`配置 API 错误: ${error.message}`);
+            }
+        });
+        
+        testVideoApiBtn.addEventListener('click', async () => {
+            try {
+                addApiResponse('测试视频生成 API...');
+                const response = await fetch('/api/generate_video', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        text: '测试文本，测试文本',
+                        voice_type: 'default'
+                    })
+                });
+                
+                const data = await response.json();
+                addApiResponse(`视频 API 响应: ${JSON.stringify(data)}`);
+            } catch (error) {
+                addApiResponse(`视频 API 错误: ${error.message}`);
+            }
+        });
+    </script>
+</body>
+</html>

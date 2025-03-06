@@ -1,0 +1,155 @@
+.record-button-container {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 100;
+}
+
+.record-button {
+  position: relative;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background-color: var(--primary-color);
+  color: white;
+  border: none;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0;
+}
+
+.record-button::before {
+  content: "";
+  display: block;
+  width: 24px;
+  height: 24px;
+  background-color: white;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+}
+
+.record-button.recording {
+  background-color: #e53935;
+  animation: pulse 1.5s infinite;
+}
+
+.record-button.recording::before {
+  width: 16px;
+  height: 16px;
+  border-radius: 2px;
+}
+
+.record-button.disabled {
+  background-color: var(--disabled-color);
+  cursor: not-allowed;
+  animation: none;
+}
+
+/* 网络问题样式 */
+.record-button.network-issue {
+  background-color: #ff9800;
+  border: 1px dashed #f44336;
+}
+
+/* 低音量警告样式 */
+.record-button.low-volume {
+  border: 2px solid #ff9800;
+}
+
+/* 离线消息样式 */
+.record-button.pending-messages {
+  background-image: linear-gradient(45deg, var(--primary-color) 25%, #ff9800 25%, #ff9800 50%, var(--primary-color) 50%, var(--primary-color) 75%, #ff9800 75%, #ff9800 100%);
+  background-size: 20px 20px;
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(229, 57, 53, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(229, 57, 53, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(229, 57, 53, 0);
+  }
+}
+
+/* 音量指示器容器 */
+.volume-indicator {
+  position: absolute;
+  left: -15px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 6px;
+  height: 80%;
+  background-color: #e0e0e0;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+/* 音量显示条 */
+.volume-bar {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  background-color: var(--primary-color);
+  transition: height 0.1s ease-out, background-color 0.3s ease;
+}
+
+/* 连接状态指示器 */
+.connection-indicator {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #f44336;
+  animation: blink 1s infinite;
+}
+
+/* 闪烁动画 */
+@keyframes blink {
+  0% { opacity: 1; }
+  50% { opacity: 0.3; }
+  100% { opacity: 1; }
+}
+
+/* 音量警告标签 */
+.volume-warning {
+  position: absolute;
+  top: -20px;
+  font-size: 11px;
+  color: #ff9800;
+  background-color: rgba(255, 255, 255, 0.9);
+  padding: 2px 5px;
+  border-radius: 3px;
+  animation: fadeInOut 2s infinite;
+}
+
+/* 淡入淡出动画 */
+@keyframes fadeInOut {
+  0% { opacity: 0.7; }
+  50% { opacity: 1; }
+  100% { opacity: 0.7; }
+}
+
+/* 待发送消息指示器 */
+.pending-message-indicator {
+  font-size: 12px;
+  color: #ff9800;
+  margin-top: 5px;
+  background-color: rgba(255, 152, 0, 0.1);
+  padding: 2px 6px;
+  border-radius: 10px;
+  border: 1px dashed #ff9800;
+  white-space: nowrap;
+}

@@ -1,0 +1,6 @@
+# MiniMax LLM 配置
+NAME: MinimaxAPI
+GROUP_ID: ${MINIMAX_GROUP_ID}
+API_KEY: ${MINIMAX_API_KEY}
+MODEL: MiniMax-Text-01
+LLM_URL: https://api.minimax.chat/v1/text/chatcompletion_v2

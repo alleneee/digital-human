@@ -1,0 +1,5 @@
+NAME: EdgeAPI
+PER: zh-CN-XiaoxiaoNeural    # 默认声音（中文小小）
+RATE: +0%                     # 语速（默认）
+VOL: +0%                      # 音量（默认）
+PIT: +0%                      # 音调（默认）

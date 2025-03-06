@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数字人助手 API 测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .section {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .section h2 {
+            margin-top: 0;
+            color: #555;
+        }
+        .form-group {
+            margin-bottom: 10px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        select, button, input {
+            padding: 8px;
+            width: 100%;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #output {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            min-height: 200px;
+            background-color: #f9f9f9;
+            white-space: pre-wrap;
+        }
+        .record-button {
+            background-color: #f44336;
+        }
+        .record-button.recording {
+            background-color: #555;
+        }
+        .audio-player {
+            margin-top: 10px;
+            width: 100%;
+        }
+        .status {
+            color: #888;
+            font-style: italic;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>数字人助手 API 测试</h1>
+        
+        <div class="section">
+            <h2>连接设置</h2>
+            <div class="form-group">
+                <label for="connection-id">连接 ID:</label>
+                <input type="text" id="connection-id" value="test-user" />
+            </div>
+            <div class="form-group">
+                <button id="connect-button">连接 WebSocket</button>
+            </div>
+            <div id="connection-status" class="status">未连接</div>
+        </div>
+        
+        <div class="section">
+            <h2>API 提供商设置</h2>
+            <div class="form-group">
+                <label for="llm-provider">LLM 提供商:</label>
+                <select id="llm-provider">
+                    <option value="google">Google</option>
+                    <option value="minimax">MiniMax</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="stt-provider">STT 提供商:</label>
+                <select id="stt-provider">
+                    <option value="deepgram">Deepgram</option>
+                    <option value="minimax">MiniMax</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="tts-provider">TTS 提供商:</label>
+                <select id="tts-provider">
+                    <option value="google">Google</option>
+                    <option value="minimax">MiniMax</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <button id="update-config-button">更新配置</button>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>文本输入测试 (LLM & TTS)</h2>
+            <div class="form-group">
+                <label for="text-input">输入文本:</label>
+                <input type="text" id="text-input" value="你好，今天天气真不错" />
+            </div>
+            <div class="form-group">
+                <button id="send-text-button">发送文本</button>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>语音输入测试 (STT)</h2>
+            <div class="form-group">
+                <button id="record-button" class="record-button">开始录音</button>
+            </div>
+            <div id="recording-status" class="status">未录音</div>
+        </div>
+        
+        <div class="section">
+            <h2>输出</h2>
+            <div id="output">等待操作...</div>
+            <audio id="audio-player" class="audio-player" controls></audio>
+        </div>
+    </div>
+
+    <script>
+        let ws = null;
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let isRecording = false;
+        
+        // 连接 WebSocket
+        document.getElementById('connect-button').addEventListener('click', function() {
+            const connectionId = document.getElementById('connection-id').value;
+            connectWebSocket(connectionId);
+        });
+        
+        function connectWebSocket(connectionId) {
+            // 关闭现有连接
+            if (ws !== null) {
+                ws.close();
+            }
+            
+            // 创建新连接
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            // 直接连接到WebSocket服务器
+            // 尝试使用主应用的WebSocket端点
+            const wsHost = window.location.hostname || 'localhost';
+            const wsPort = window.location.port || '8000';
+            const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            
+            // 尝试使用原始的WebSocket端点
+            ws = new WebSocket(`${wsProtocol}//${wsHost}:${wsPort}/api/ws?client_id=${connectionId}`);
+            
+            // 打印连接信息便于调试
+            console.log(`正在连接WebSocket: ${wsProtocol}//${wsHost}:${wsPort}/api/ws?client_id=${connectionId}`);
+            
+            const statusElem = document.getElementById('connection-status');
+            statusElem.textContent = "正在连接...";
+            
+            ws.onopen = function() {
+                statusElem.textContent = "已连接";
+                log("WebSocket 连接已建立");
+            };
+            
+            ws.onmessage = function(event) {
+                handleWebSocketMessage(event.data);
+            };
+            
+            ws.onclose = function(event) {
+                statusElem.textContent = "已断开连接";
+                log("WebSocket 连接已关闭 - 代码: " + event.code + ", 原因: " + (event.reason || '未提供'));
+                console.log('连接关闭事件:', event);
+                ws = null;
+                
+                // 3秒后自动重连
+                setTimeout(function() {
+                    log("尝试重新连接...");
+                    connectWebSocket();
+                }, 3000);
+            };
+            
+            ws.onerror = function(error) {
+                statusElem.textContent = "连接错误";
+                log("WebSocket 错误发生");
+                console.error('连接错误详情:', error);
+            };
+        }
+        
+        // 更新配置
+        document.getElementById('update-config-button').addEventListener('click', function() {
+            const connectionId = document.getElementById('connection-id').value;
+            const llmProvider = document.getElementById('llm-provider').value;
+            const sttProvider = document.getElementById('stt-provider').value;
+            const ttsProvider = document.getElementById('tts-provider').value;
+            
+            updateConfig(connectionId, llmProvider, sttProvider, ttsProvider);
+        });
+        
+        function updateConfig(connectionId, llmProvider, sttProvider, ttsProvider) {
+            // 使用绝对路径，确保API请求不会相对于当前页面URL
+            fetch(window.location.protocol + '//' + window.location.host + '/api/update_config', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    connection_id: connectionId,
+                    providers: {
+                        llm: llmProvider,
+                        stt: sttProvider,
+                        tts: ttsProvider
+                    }
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                log("配置更新: " + JSON.stringify(data));
+            })
+            .catch(error => {
+                log("配置更新错误: " + error);
+            });
+        }
+        
+        // 发送文本
+        document.getElementById('send-text-button').addEventListener('click', function() {
+            if (ws === null) {
+                alert("请先连接 WebSocket");
+                return;
+            }
+            
+            const text = document.getElementById('text-input').value;
+            
+            ws.send(JSON.stringify({
+                type: "text_input",
+                text: text
+            }));
+            
+            log(`发送文本: ${text}`);
+        });
+        
+        // 录音功能
+        document.getElementById('record-button').addEventListener('click', function() {
+            if (ws === null) {
+                alert("请先连接 WebSocket");
+                return;
+            }
+            
+            const button = document.getElementById('record-button');
+            const statusElem = document.getElementById('recording-status');
+            
+            if (!isRecording) {
+                // 开始录音
+                navigator.mediaDevices.getUserMedia({ audio: true })
+                    .then(stream => {
+                        mediaRecorder = new MediaRecorder(stream);
+                        audioChunks = [];
+                        
+                        mediaRecorder.ondataavailable = event => {
+                            audioChunks.push(event.data);
+                        };
+                        
+                        mediaRecorder.onstop = () => {
+                            const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                            sendAudioData(audioBlob);
+                        };
+                        
+                        mediaRecorder.start();
+                        isRecording = true;
+                        button.textContent = "停止录音";
+                        button.classList.add("recording");
+                        statusElem.textContent = "正在录音...";
+                        log("开始录音");
+                    })
+                    .catch(error => {
+                        log("录音错误: " + error);
+                    });
+            } else {
+                // 停止录音
+                mediaRecorder.stop();
+                isRecording = false;
+                button.textContent = "开始录音";
+                button.classList.remove("recording");
+                statusElem.textContent = "录音已完成，正在处理...";
+                log("停止录音");
+            }
+        });
+        
+        function sendAudioData(audioBlob) {
+            const reader = new FileReader();
+            reader.onload = () => {
+                const arrayBuffer = reader.result;
+                ws.send(arrayBuffer);
+                log("发送音频数据: " + Math.round(audioBlob.size / 1024) + " KB");
+            };
+            reader.readAsArrayBuffer(audioBlob);
+        }
+        
+        // 处理 WebSocket 消息
+        function handleWebSocketMessage(data) {
+            try {
+                // 尝试解析为 JSON
+                const jsonData = JSON.parse(data);
+                log("收到消息: " + JSON.stringify(jsonData));
+                
+                // 处理不同类型的消息
+                if (jsonData.type === "bot_reply") {
+                    log("机器人回复: " + jsonData.message);
+                } else if (jsonData.type === "audio_ready") {
+                    // 处理音频数据
+                    const audioPlayer = document.getElementById('audio-player');
+                    audioPlayer.src = jsonData.audio_url;
+                    audioPlayer.play();
+                    log("收到音频, 自动播放中");
+                } else if (jsonData.type === "transcription") {
+                    log("转录结果: " + jsonData.text);
+                }
+            } catch (e) {
+                // 如果不是 JSON，可能是二进制数据
+                log("收到二进制数据");
+                
+                // 处理二进制音频数据
+                const blob = new Blob([data], { type: 'audio/wav' });
+                const audioUrl = URL.createObjectURL(blob);
+                const audioPlayer = document.getElementById('audio-player');
+                audioPlayer.src = audioUrl;
+                audioPlayer.play();
+                log("收到音频数据, 自动播放中");
+            }
+        }
+        
+        // 工具函数：记录消息到输出区
+        function log(message) {
+            const outputElem = document.getElementById('output');
+            const timestamp = new Date().toLocaleTimeString();
+            outputElem.innerHTML = `[${timestamp}] ${message}\n` + outputElem.innerHTML;
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+fastapi==0.108.0
+uvicorn==0.25.0
+websockets==12.0
+python-dotenv==1.0.0
+deepgram-sdk==3.0.0
+langchain==0.1.4
+langchain-google-genai==0.0.7
+google-generativeai==0.3.2
+httpx==0.26.0
+jinja2==3.1.2
+backoff==2.2.1

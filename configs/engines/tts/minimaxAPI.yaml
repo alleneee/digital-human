@@ -1,0 +1,9 @@
+NAME: MiniMaxAPI
+API_KEY: ${MINIMAX_API_KEY}   # 从环境变量获取
+GROUP_ID: ${MINIMAX_GROUP_ID} # 从环境变量获取
+API_VERSION: T2A_V2           # API版本：T2A 或 T2A_V2
+VOICE_TYPE: general           # 声音类型：general, character, clone
+VOICE_ID: female-general-24   # 声音ID
+SAMPLE_RATE: 24000            # 采样率
+SPEED: 1.0                    # 语速
+STYLE: general                # 风格
