@@ -7,8 +7,8 @@ from yacs.config import CfgNode as CN
 from utils import config, AudioMessage, TextMessage, AudioFormatType
 from engine.asr import ASRFactory
 from engine.llm import LLMFactory
-from deepgram_integration import text_to_speech_cached
-from minimax_integration import get_minimax_integration
+from integrations.deepgram import text_to_speech_cached
+from integrations.minimax import get_minimax_integration
 from utils.audio_utils import detect_audio_format, split_text_into_sentences
 
 # 配置日志

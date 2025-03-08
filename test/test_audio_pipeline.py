@@ -13,7 +13,7 @@ from pathlib import Path
 from datetime import datetime
 
 # 导入项目模块
-from minimax_integration import get_minimax_integration
+from integrations.minimax import get_minimax_integration
 from utils.audio_utils import detect_audio_format, compute_content_hash, get_cached_audio, save_to_cache
 
 # 配置日志

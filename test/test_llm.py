@@ -1,62 +1,69 @@
 # -*- coding: utf-8 -*-
 '''
-测试 LLM 实现
+测试LLM引擎
 '''
 
 import asyncio
-import os
 import logging
-from utils import config, TextMessage
-from engine.llm import LLMFactory
+import os
+from pathlib import Path
+from engine.llm.openaiLLM import OpenAILLM
+from yacs.config import CfgNode as CN
+from utils import TextMessage
 
 # 配置日志
-logging.basicConfig(level=logging.INFO, 
-                   format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-async def test_llm():
-    """
-    测试 LLM 引擎
-    """
+async def test_openai_llm():
+    """测试OpenAI大语言模型"""
     try:
-        # 加载 MiniMax LLM 配置
-        config_path = os.path.join(os.path.dirname(__file__), "configs/engines/llm/minimaxAPI.yaml")
-        if not os.path.exists(config_path):
-            logger.error(f"LLM 配置文件不存在: {config_path}")
-            return
-            
-        logger.info(f"加载 LLM 配置: {config_path}")
-        llm_config = config.load_yaml(config_path)
+        logger.info("测试OpenAI LLM引擎...")
         
-        # 创建 LLM 引擎
-        logger.info("创建 LLM 引擎")
-        llm_engine = LLMFactory.create(llm_config)
+        # 获取API Key（从环境变量）
+        api_key = os.environ.get("OPENAI_API_KEY")
+        if not api_key:
+            logger.error("未设置OPENAI_API_KEY环境变量")
+            return None
         
-        # 获取用户输入
-        user_input = input("请输入问题: ")
-        if not user_input:
-            logger.error("输入为空")
-            return
-            
-        # 创建文本消息
-        text_message = TextMessage(
-            data=user_input,
-            desc="user"
-        )
+        # 创建OpenAI LLM配置
+        cfg = CN()
+        cfg.NAME = "OpenAILLM"
+        cfg.API_KEY = api_key
+        cfg.MODEL = "gpt-3.5-turbo"
+        cfg.TEMPERATURE = 0.7
+        cfg.MAX_TOKENS = 500
+        cfg.SYSTEM_PROMPT = "你是一个友好的AI助手，能够提供简洁明了的回答。请用中文回复用户的问题。"
+        cfg.TIMEOUT_S = 10
+        cfg.STREAM = False
         
-        # 调用 LLM 引擎生成回复
-        logger.info("开始生成回复")
-        result = await llm_engine.run(text_message)
+        # 初始化OpenAI LLM对象
+        llm = OpenAILLM(cfg)
         
-        if result:
-            logger.info(f"生成的回复: {result.data}")
+        # 准备测试文本
+        test_text = "你好，请简单介绍一下自己"
+        test_message = TextMessage(data=test_text)
+        
+        logger.info(f"发送测试文本: '{test_text}'")
+        
+        # 调用LLM引擎
+        response = await llm.run(test_message)
+        
+        if response:
+            logger.info(f"收到回复: '{response.data}'")
+            return response.data
         else:
-            logger.error("生成回复失败")
+            logger.error("未收到回复")
+            return None
             
-        # 关闭引擎会话
-        await llm_engine.close()
     except Exception as e:
-        logger.error(f"测试过程中出现错误: {e}")
+        logger.error(f"测试过程出错: {str(e)}")
+        return None
 
 if __name__ == "__main__":
-    asyncio.run(test_llm())
+    # 运行测试
+    result = asyncio.run(test_openai_llm())
+    if result:
+        print(f"\n最终LLM回复结果:\n{result}")
+    else:
+        print("\n测试失败，未获得回复")

@@ -1,0 +1,8 @@
+NAME: EdgeAPI
+PER: "zh-CN-XiaoxiaoNeural"  # 语音名称
+RATE: "+0%"                  # 语速
+VOL: "+0%"                   # 音量
+PIT: "+0%"                   # 音调
+OUTPUT_FORMAT: "wav"         # 输出格式
+SAMPLE_RATE: 16000            # 采样率
+SAMPLE_WIDTH: 2               # 采样位宽

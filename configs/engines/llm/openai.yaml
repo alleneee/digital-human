@@ -1,0 +1,8 @@
+NAME: OpenAILLM
+API_KEY: "your_openai_api_key_here"
+MODEL: "gpt-3.5-turbo"
+TEMPERATURE: 0.7
+MAX_TOKENS: 1500
+SYSTEM_PROMPT: "你是一个友好的AI助手，能够提供简洁明了的回答。请用中文回复用户的问题。"
+TIMEOUT_S: 10
+STREAM: false

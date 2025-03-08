@@ -1,0 +1,37 @@
+# 数字人框架默认配置
+
+NAME: "DigitalHuman"
+
+# ASR配置
+ASR:
+  ENABLED: true
+  NAME: "FunASRLocal"  # 默认使用FunASR本地引擎
+  # 可选配置覆盖，会与引擎特定配置合并
+  # MODEL_PATH: "path/to/your/asr/model"
+
+# LLM配置
+LLM:
+  ENABLED: true
+  NAME: "OpenAILLM"  # 默认使用OpenAI引擎
+  # 可选配置覆盖
+  # API_KEY: "your_api_key"
+  # MODEL: "gpt-3.5-turbo"
+
+# TTS配置
+TTS:
+  ENABLED: true
+  NAME: "EdgeAPI"  # 默认使用Edge TTS引擎
+  # 可选配置覆盖
+  # PER: "zh-CN-XiaoxiaoNeural"
+  # 也可以切换到MiniMax TTS
+  # NAME: "MiniMaxAPI"
+
+# API配置
+API:
+  HOST: "0.0.0.0"  # 监听所有网络接口
+  PORT: 8000
+
+# 日志配置
+LOGGING:
+  LEVEL: "INFO"
+  FILE: "logs/digital-human.log"

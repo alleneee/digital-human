@@ -1,139 +1,210 @@
-"""
-测试API模块
-提供用于测试数字人功能的简单API
-"""
+# -*- coding: utf-8 -*-
+'''
+测试API接口
+'''
 
-import os
-import base64
+import asyncio
+import aiohttp
 import logging
-from fastapi import APIRouter, Request, HTTPException
-from fastapi.responses import JSONResponse
-from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
-from typing import Dict, Any, Optional
-
-from minimax_integration import get_minimax_integration
+from pathlib import Path
+import base64
+import json
+import argparse
 
 # 配置日志
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# 创建API路由
-test_router = APIRouter(prefix="/test", tags=["测试"])
-
-# 初始化MiniMax集成实例
-minimax = get_minimax_integration()
-
-@test_router.get("/")
-async def test_index():
-    """测试首页，重定向到静态测试页面"""
-    return {"url": "/static/test/index.html"}
-
-@test_router.post("/tts")
-async def test_tts(request: Request):
-    """测试文本转语音API"""
+async def test_health_check(base_url: str = "http://localhost:8000"):
+    """测试健康检查接口"""
     try:
-        # 获取请求数据
-        data = await request.json()
-        text = data.get("text", "")
-        voice_id = data.get("voice_id", "female-general-24")
-        provider = data.get("provider", "minimax")
+        url = f"{base_url}/health"
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as response:
+                result = await response.json()
+                logger.info(f"健康检查接口响应: {result}")
+                return result
+    except Exception as e:
+        logger.error(f"健康检查接口测试失败: {str(e)}")
+        return None
+
+async def test_text_chat(text: str, base_url: str = "http://localhost:8000"):
+    """测试文本聊天接口"""
+    try:
+        url = f"{base_url}/api/chat/text"
+        data = {"text": text}
         
-        if not text:
-            raise HTTPException(status_code=400, detail="文本不能为空")
+        async with aiohttp.ClientSession() as session:
+            async with session.post(url, json=data) as response:
+                if response.status == 200:
+                    result = await response.json()
+                    logger.info(f"文本聊天接口响应: {result}")
+                    
+                    # 如果有音频数据，保存到文件
+                    if "audio" in result and result["audio"]:
+                        audio_data = base64.b64decode(result["audio"])
+                        output_dir = Path("test_outputs")
+                        output_dir.mkdir(exist_ok=True)
+                        
+                        output_path = output_dir / "api_text_chat_output.wav"
+                        with open(output_path, "wb") as f:
+                            f.write(audio_data)
+                            
+                        logger.info(f"已保存文本聊天响应音频到: {output_path}")
+                    
+                    return result
+                else:
+                    error_text = await response.text()
+                    logger.error(f"文本聊天接口请求失败: {response.status}, {error_text}")
+                    return None
+    except Exception as e:
+        logger.error(f"文本聊天接口测试失败: {str(e)}")
+        return None
+
+async def test_audio_chat(audio_path: str, base_url: str = "http://localhost:8000"):
+    """测试音频聊天接口"""
+    try:
+        url = f"{base_url}/api/chat/audio"
         
-        # 调用MiniMax TTS API
-        result = await minimax.text_to_speech(
-            text=text,
-            voice_id=voice_id,
-            use_cache=True
-        )
+        # 读取音频文件
+        with open(audio_path, "rb") as f:
+            audio_data = f.read()
         
-        if not result.get("success"):
-            return JSONResponse(
-                status_code=500,
-                content={
-                    "success": False,
-                    "error": result.get("error", "语音合成失败")
-                }
-            )
-        
-        # 获取音频数据和信息
-        audio_data = result.get("audio_data", b"")
-        if not audio_data:
-            return JSONResponse(
-                status_code=500,
-                content={
-                    "success": False,
-                    "error": "未获取到音频数据"
-                }
-            )
-        
-        # 将二进制音频数据转换为base64编码
+        # Base64编码
         audio_base64 = base64.b64encode(audio_data).decode("utf-8")
         
-        return {
-            "success": True,
-            "audio_data": audio_base64,
-            "duration": result.get("duration", 0),
-            "cached": result.get("cached", False),
-            "format": result.get("format", "mp3")
+        # 准备请求数据
+        data = {
+            "audio": audio_base64,
+            "format": Path(audio_path).suffix[1:].lower()  # 文件扩展名作为格式
         }
         
-    except HTTPException as he:
-        raise he
+        async with aiohttp.ClientSession() as session:
+            async with session.post(url, json=data) as response:
+                if response.status == 200:
+                    result = await response.json()
+                    logger.info(f"音频聊天接口响应: {result}")
+                    
+                    # 如果有音频数据，保存到文件
+                    if "audio" in result and result["audio"]:
+                        audio_data = base64.b64decode(result["audio"])
+                        output_dir = Path("test_outputs")
+                        output_dir.mkdir(exist_ok=True)
+                        
+                        output_path = output_dir / "api_audio_chat_output.wav"
+                        with open(output_path, "wb") as f:
+                            f.write(audio_data)
+                            
+                        logger.info(f"已保存音频聊天响应音频到: {output_path}")
+                    
+                    return result
+                else:
+                    error_text = await response.text()
+                    logger.error(f"音频聊天接口请求失败: {response.status}, {error_text}")
+                    return None
     except Exception as e:
-        logger.error(f"TTS测试API错误: {e}")
-        return JSONResponse(
-            status_code=500,
-            content={
-                "success": False,
-                "error": str(e)
-            }
-        )
+        logger.error(f"音频聊天接口测试失败: {str(e)}")
+        return None
 
-@test_router.post("/config")
-async def update_test_config(request: Request):
-    """更新测试配置"""
+async def test_asr(audio_path: str, base_url: str = "http://localhost:8000"):
+    """测试ASR接口"""
     try:
-        # 获取请求数据
-        data = await request.json()
-        llm = data.get("llm", "google")
-        stt = data.get("stt", "deepgram")
-        tts = data.get("tts", "google")
+        url = f"{base_url}/api/asr"
         
-        # 这里只是模拟更新配置，实际项目中应该保存到用户会话或数据库
-        # 在实际项目中，这些配置可能会通过WebSocket连接传递
+        # 读取音频文件
+        with open(audio_path, "rb") as f:
+            audio_data = f.read()
         
-        return {
-            "success": True,
-            "config": {
-                "llm": llm,
-                "stt": stt,
-                "tts": tts
-            }
+        # Base64编码
+        audio_base64 = base64.b64encode(audio_data).decode("utf-8")
+        
+        # 准备请求数据
+        data = {
+            "audio": audio_base64,
+            "format": Path(audio_path).suffix[1:].lower()  # 文件扩展名作为格式
         }
         
+        async with aiohttp.ClientSession() as session:
+            async with session.post(url, json=data) as response:
+                if response.status == 200:
+                    result = await response.json()
+                    logger.info(f"ASR接口响应: {result}")
+                    return result
+                else:
+                    error_text = await response.text()
+                    logger.error(f"ASR接口请求失败: {response.status}, {error_text}")
+                    return None
     except Exception as e:
-        logger.error(f"更新测试配置错误: {e}")
-        return JSONResponse(
-            status_code=500,
-            content={
-                "success": False,
-                "error": str(e)
-            }
-        )
+        logger.error(f"ASR接口测试失败: {str(e)}")
+        return None
 
-# 添加测试API到应用的函数
-def add_test_routes(app):
-    """将测试路由添加到FastAPI应用"""
-    # 添加API路由
-    app.include_router(test_router, prefix="/api")
+async def test_tts(text: str, base_url: str = "http://localhost:8000"):
+    """测试TTS接口"""
+    try:
+        url = f"{base_url}/api/tts"
+        data = {"text": text}
+        
+        async with aiohttp.ClientSession() as session:
+            async with session.post(url, json=data) as response:
+                if response.status == 200:
+                    result = await response.json()
+                    logger.info(f"TTS接口响应: {result}")
+                    
+                    # 保存音频数据
+                    if "audio" in result and result["audio"]:
+                        audio_data = base64.b64decode(result["audio"])
+                        output_dir = Path("test_outputs")
+                        output_dir.mkdir(exist_ok=True)
+                        
+                        output_path = output_dir / "api_tts_output.wav"
+                        with open(output_path, "wb") as f:
+                            f.write(audio_data)
+                            
+                        logger.info(f"已保存TTS接口响应音频到: {output_path}")
+                    
+                    return result
+                else:
+                    error_text = await response.text()
+                    logger.error(f"TTS接口请求失败: {response.status}, {error_text}")
+                    return None
+    except Exception as e:
+        logger.error(f"TTS接口测试失败: {str(e)}")
+        return None
+
+if __name__ == "__main__":
+    # 解析命令行参数
+    parser = argparse.ArgumentParser(description="测试数字人API接口")
+    parser.add_argument("--base_url", type=str, default="http://localhost:8000", help="API基础URL")
+    parser.add_argument("--test", type=str, choices=["health", "text", "audio", "asr", "tts", "all"], 
+                        default="all", help="要测试的接口")
+    parser.add_argument("--text", type=str, default="你好，我是谁？", help="文本聊天或TTS的输入文本")
+    parser.add_argument("--audio", type=str, default="test_outputs/advanced_audio_简短语音.mp3", 
+                       help="音频聊天或ASR的输入音频文件路径")
     
-    # 添加静态文件路由
-    app.mount("/static", StaticFiles(directory="static"), name="static")
+    args = parser.parse_args()
     
-    # 添加路由重定向
-    @app.get("/test")
-    async def redirect_to_test():
-        """重定向到测试页面"""
-        return {"url": "/static/test/index.html"}
+    # 创建输出目录
+    Path("test_outputs").mkdir(exist_ok=True)
+    
+    # 运行测试
+    loop = asyncio.get_event_loop()
+    
+    if args.test == "health" or args.test == "all":
+        print("\n===== 测试健康检查接口 =====")
+        result = loop.run_until_complete(test_health_check(args.base_url))
+        
+    if args.test == "text" or args.test == "all":
+        print("\n===== 测试文本聊天接口 =====")
+        result = loop.run_until_complete(test_text_chat(args.text, args.base_url))
+        
+    if args.test == "audio" or args.test == "all":
+        print("\n===== 测试音频聊天接口 =====")
+        result = loop.run_until_complete(test_audio_chat(args.audio, args.base_url))
+        
+    if args.test == "asr" or args.test == "all":
+        print("\n===== 测试ASR接口 =====")
+        result = loop.run_until_complete(test_asr(args.audio, args.base_url))
+        
+    if args.test == "tts" or args.test == "all":
+        print("\n===== 测试TTS接口 =====")
+        result = loop.run_until_complete(test_tts(args.text, args.base_url))
