@@ -30,10 +30,10 @@ TTS_LEGACY_API_ENDPOINT = "https://api.minimax.chat/v1/text_to_speech"  # 旧版
 
 # 常量定义
 DEFAULT_LLM_MODEL = "MiniMax-Text-01"  # MiniMax对话大模型
-DEFAULT_TTS_MODEL = "speech-01"  # 语音合成模型
-DEFAULT_VOICE_TYPE = "general"  # 语音类型
-DEFAULT_VOICE = "female-general-24"  # 默认语音角色
-DEFAULT_SAMPLE_RATE = 24000  # 默认采样率
+DEFAULT_TTS_MODEL = "speech-01-turbo"  # 语音合成模型 (turbo版更稳定)
+DEFAULT_VOICE = "female-shaonv"  # 默认语音角色
+DEFAULT_SAMPLE_RATE = 32000  # 默认采样率
+DEFAULT_BITRATE = 128000  # 默认比特率
 
 
 class MinimaxIntegration:
@@ -175,12 +175,14 @@ class MinimaxIntegration:
     async def text_to_speech(self,
                              text: str,
                              voice_id: str = DEFAULT_VOICE,
-                             voice_type: str = DEFAULT_VOICE_TYPE,
                              speed: float = 1.0,
+                             volume: float = 1.0,
+                             pitch: float = 0.0,
+                             emotion: str = "neutral",
                              sample_rate: int = DEFAULT_SAMPLE_RATE,
-                             use_cache: bool = True,
-                             api_version: str = "T2A_V2",
-                             style: str = "general") -> Dict[str, Any]:
+                             bitrate: int = DEFAULT_BITRATE,
+                             audio_format: str = "mp3",
+                             use_cache: bool = True) -> Dict[str, Any]:
         """
         调用MiniMax TTS API进行语音合成
         
@@ -203,15 +205,13 @@ class MinimaxIntegration:
                 # 构建缓存参数
                 cache_params = {
                     "speed": speed,
-                    "api_version": api_version
+                    "volume": volume,
+                    "pitch": pitch,
+                    "emotion": emotion,
+                    "sample_rate": sample_rate,
+                    "bitrate": bitrate,
+                    "format": audio_format
                 }
-                
-                if api_version == "T2A_V2":
-                    cache_params.update({
-                        "sample_rate": sample_rate,
-                        "voice_type": voice_type,
-                        "style": style
-                    })
                 
                 cache_key = compute_content_hash(text, voice_id, cache_params)
                 cached_audio = await get_cached_audio(cache_key)
@@ -226,32 +226,33 @@ class MinimaxIntegration:
             
             session = await self.ensure_session()
             
-            # 根据API版本选择不同的端点和参数
-            if api_version == "T2A_V2":
-                endpoint = TTS_API_ENDPOINT
-                
-                payload = {
-                    "model_name": DEFAULT_TTS_MODEL,
-                    "text": text,
-                    "type": voice_type,
-                    "voice_id": voice_id,
-                    "config": {
-                        "audio_sample_rate": sample_rate,
-                        "speed": speed,
-                        "style": style
+            # 使用T2A_V2端点
+            endpoint = TTS_API_ENDPOINT
+            
+            # 构建符合官方文档的请求结构
+            payload = {
+                "model": DEFAULT_TTS_MODEL,
+                "text": text,
+                "stream": False,
+                "timber_weights": [
+                    {
+                        "voice_id": voice_id,
+                        "weight": 1
                     }
-                }
-            else:  # 旧版本T2A
-                endpoint = TTS_LEGACY_API_ENDPOINT
-                
-                payload = {
-                    "text": text,
-                    "voice_id": voice_id,
-                    "model_id": DEFAULT_TTS_MODEL,
+                ],
+                "voice_setting": {
+                    "voice_id": "",
                     "speed": speed,
-                    "vol": 1.0,  # 默认音量
-                    "pitch": 0    # 默认音调
+                    "vol": volume,
+                    "pitch": pitch,
+                    "emotion": emotion
+                },
+                "audio_setting": {
+                    "sample_rate": sample_rate,
+                    "bitrate": bitrate,
+                    "format": audio_format
                 }
+            }
             
             # 构建完整URL，包含group_id
             url = f"{endpoint}?GroupId={self.group_id}"

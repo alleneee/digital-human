@@ -20,6 +20,11 @@ var/
 .installed.cfg
 *.egg
 
+# 环境变量文件
+.env
+.env.*
+!.env.example
+
 # 虚拟环境
 venv/
 ENV/
@@ -31,6 +36,9 @@ cache/
 
 # 日志
 *.log
+
+# 测试输出
+test_outputs/
 
 # IDE相关
 .idea/

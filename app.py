@@ -17,6 +17,9 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from dotenv import load_dotenv
 from datetime import datetime
 
+# 导入测试API模块
+from test_api import add_test_routes
+
 # 导入自定义模块
 from audio_processor import AudioProcessor
 from deepgram_integration import setup_live_transcription, detect_audio_format
@@ -1349,6 +1352,9 @@ app.mount("/frontend", StaticFiles(directory="frontend/build", html=True), name=
 
 # 挂载前端测试文件 - 确保可以直接从根路径访问test.html
 app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend_root")
+
+# 添加测试路由和静态文件挂载
+add_test_routes(app)
 
 # 删除独立的WebSocket应用定义
 # 所有WebSocket请求现在由主应用app处理
