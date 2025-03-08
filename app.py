@@ -17,8 +17,8 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from dotenv import load_dotenv
 from datetime import datetime
 
-# 导入测试API模块
-from test_api import add_test_routes
+# 导入测试API模块 - 暂时注释掉，因为模块不存在
+# from test_api import add_test_routes
 
 # 导入自定义模块
 from audio_processor import AudioProcessor
@@ -1344,17 +1344,17 @@ async def shutdown_event():
     logger.info("数字人助手应用已关闭")
 
 # 现在，在所有API路由注册后，挂载静态文件
-# 为预设图像创建静态文件挂载点
-app.mount("/static/preset_images", StaticFiles(directory="echomimic_v2/EMTD_dataset/ref_imgs_by_FLUX"), name="preset_images")
+# 为预设图像创建静态文件挂载点 - 暂时注释掉，因为目录不存在
+# app.mount("/static/preset_images", StaticFiles(directory="echomimic_v2/EMTD_dataset/ref_imgs_by_FLUX"), name="preset_images")
 
-# 挂载前端构建目录
-app.mount("/frontend", StaticFiles(directory="frontend/build", html=True), name="frontend")
+# 挂载前端构建目录 - 暂时注释掉，因为目录不存在
+# app.mount("/frontend", StaticFiles(directory="frontend/build", html=True), name="frontend")
 
-# 挂载前端测试文件 - 确保可以直接从根路径访问test.html
-app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend_root")
+# 挂载前端测试文件 - 暂时注释掉，因为目录不存在
+# app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend_root")
 
-# 添加测试路由和静态文件挂载
-add_test_routes(app)
+# 添加测试路由和静态文件挂载 - 暂时注释掉，因为函数不存在
+# add_test_routes(app)
 
 # 删除独立的WebSocket应用定义
 # 所有WebSocket请求现在由主应用app处理

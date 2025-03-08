@@ -32,6 +32,7 @@ TTS_LEGACY_API_ENDPOINT = "https://api.minimax.chat/v1/text_to_speech"  # 旧版
 DEFAULT_LLM_MODEL = "MiniMax-Text-01"  # MiniMax对话大模型
 DEFAULT_TTS_MODEL = "speech-01-turbo"  # 语音合成模型 (turbo版更稳定)
 DEFAULT_VOICE = "female-shaonv"  # 默认语音角色
+DEFAULT_VOICE_TYPE = "general"  # 默认语音类型 (general, character, clone)
 DEFAULT_SAMPLE_RATE = 32000  # 默认采样率
 DEFAULT_BITRATE = 128000  # 默认比特率
 

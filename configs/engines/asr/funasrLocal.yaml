@@ -1,0 +1,12 @@
+NAME: FunASRLocal
+MODEL_PATH: /Users/niko/.cache/modelscope/hub/SenseVoiceSmall
+LANGUAGE: auto
+USE_VAD: true
+VAD_MODEL: fsmn-vad
+USE_PUNC: true
+DEVICE: cpu
+BATCH_SIZE_S: 60
+USE_ITN: true
+MERGE_VAD: true
+MERGE_LENGTH_S: 15
+MAX_SINGLE_SEGMENT_TIME: 30000

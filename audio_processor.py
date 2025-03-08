@@ -32,12 +32,20 @@ class AudioProcessor:
         初始化 ASR 引擎
         """
         try:
-            # 加载 Deepgram ASR 配置
+            # 优先尝试加载 FunASR 本地模型配置
+            funasr_config_path = os.path.join(os.path.dirname(__file__), "configs/engines/asr/funasrLocal.yaml")
+            if os.path.exists(funasr_config_path):
+                asr_config = config.load_yaml(funasr_config_path)
+                self.asr_engine = ASRFactory.create(asr_config)
+                logger.info(f"本地 FunASR 引擎初始化成功: {self.asr_engine.name}")
+                return
+            
+            # 如果没有本地模型配置或加载失败，回退到 Deepgram
             config_path = os.path.join(os.path.dirname(__file__), "configs/engines/asr/deepgramAPI.yaml")
             if os.path.exists(config_path):
                 asr_config = config.load_yaml(config_path)
                 self.asr_engine = ASRFactory.create(asr_config)
-                logger.info(f"ASR 引擎初始化成功: {self.asr_engine.name}")
+                logger.info(f"Deepgram ASR 引擎初始化成功: {self.asr_engine.name}")
             else:
                 logger.error(f"ASR 配置文件不存在: {config_path}")
                 self.asr_engine = None
