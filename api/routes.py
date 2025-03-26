@@ -11,6 +11,8 @@ from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
 from utils.protocol import AudioMessage, TextMessage, AudioFormatType
 from utils.singleton import Singleton
+from api.models import VideoGenerationRequest, TextToVideoRequest, VideoGenerationResponse
+from api.models import AgentRequest, AgentResponse  # 导入Agent相关模型
 import asyncio
 import tempfile
 import os
@@ -90,13 +92,16 @@ class TTSResponse(BaseModel):
 
 # 实现API路由
 class APIService(metaclass=Singleton):
-    """API服务类，管理会话和引擎实例"""
+    """API服务类，管理对话上下文和处理请求"""
     
-    def __init__(self):
+    def __init__(self, config=None, pipeline=None, speech_processor=None, echomimic_integration=None):
         """初始化API服务"""
         self.contexts = {}  # 存储对话上下文
-        self.pipeline = None  # 对话流水线实例
-        self.speech_processor = None  # 语音处理器实例
+        self.context_timestamps = {}  # 存储上下文最后访问时间
+        self.pipeline = pipeline  # 对话流水线实例
+        self.speech_processor = speech_processor  # 语音处理器实例
+        self.echomimic_integration = echomimic_integration  # EchoMimicV2集成实例
+        self.config = config  # 配置
         
     def set_pipeline(self, pipeline):
         """设置对话流水线实例"""
@@ -105,6 +110,10 @@ class APIService(metaclass=Singleton):
     def set_speech_processor(self, speech_processor):
         """设置语音处理器实例"""
         self.speech_processor = speech_processor
+        
+    def set_echomimic_integration(self, echomimic_integration):
+        """设置EchoMimicV2集成实例"""
+        self.echomimic_integration = echomimic_integration
         
     def get_context(self, context_id: str) -> Dict[str, Any]:
         """获取对话上下文"""
@@ -349,7 +358,180 @@ async def text_to_speech(request: TTSRequest, api_service: APIService = Depends(
         logger.error(f"语音合成处理错误: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.post("/video/generate", response_model=VideoGenerationResponse)
+async def generate_video(request: VideoGenerationRequest, api_service: APIService = Depends(get_api_service)):
+    """音频到视频生成接口"""
+    start_time = time.time()
+    
+    # 检查是否初始化
+    if not api_service.echomimic_integration:
+        raise HTTPException(status_code=500, detail="EchoMimic集成未初始化")
+    
+    try:
+        # 处理视频生成
+        ref_image_path = request.ref_image_path
+        pose_dir_path = request.pose_dir_path
+        
+        video_path = await api_service.echomimic_integration.process_base64_audio(
+            request.audio_data,
+            request.audio_format,
+        )
+        
+        # 构建响应
+        response = VideoGenerationResponse(
+            video_path=video_path,
+            took_ms=(time.time() - start_time) * 1000
+        )
+        
+        return response
+        
+    except Exception as e:
+        logger.error(f"视频生成异常: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"视频生成失败: {str(e)}")
+
+@router.post("/text_to_video", response_model=VideoGenerationResponse)
+async def text_to_video(request: TextToVideoRequest, api_service: APIService = Depends(get_api_service)):
+    """文本到视频生成接口"""
+    start_time = time.time()
+    
+    # 检查是否初始化
+    if not api_service.speech_processor or not api_service.echomimic_integration:
+        raise HTTPException(status_code=500, detail="语音处理器或EchoMimic集成未初始化")
+    
+    try:
+        # 构建文本消息并合成语音
+        text_message = TextMessage(text=request.text)
+        audio_output = await api_service.speech_processor.text_to_speech(
+            text_message, voice_id=request.voice_id
+        )
+        
+        # 获取参考图像和姿势数据路径
+        ref_image_path = request.ref_image_path
+        pose_dir_path = request.pose_dir_path
+        
+        # 处理视频生成
+        video_path = await api_service.echomimic_integration.process_tts_output(
+            audio_output.data,
+            audio_output.format.value
+        )
+        
+        # 构建响应
+        response = VideoGenerationResponse(
+            video_path=video_path,
+            took_ms=(time.time() - start_time) * 1000
+        )
+        
+        return response
+        
+    except Exception as e:
+        logger.error(f"文本到视频生成异常: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"文本到视频生成失败: {str(e)}")
+
+@router.get("/echomimic/pose_dirs")
+async def get_pose_dirs(api_service: APIService = Depends(get_api_service)):
+    """获取可用的姿势数据目录"""
+    # 检查是否初始化
+    if not api_service.echomimic_integration:
+        raise HTTPException(status_code=500, detail="EchoMimic集成未初始化")
+    
+    try:
+        # 获取EchoMimicV2配置中的路径
+        echomimic_path = api_service.echomimic_integration.echomimic_path
+        pose_dirs = await api_service.echomimic_integration.get_available_pose_dirs(echomimic_path)
+        
+        return {"pose_dirs": pose_dirs}
+        
+    except Exception as e:
+        logger.error(f"获取姿势数据目录异常: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"获取姿势数据目录失败: {str(e)}")
+
+@router.get("/echomimic/ref_images")
+async def get_ref_images(api_service: APIService = Depends(get_api_service)):
+    """获取可用的参考图像"""
+    # 检查是否初始化
+    if not api_service.echomimic_integration:
+        raise HTTPException(status_code=500, detail="EchoMimic集成未初始化")
+    
+    try:
+        # 获取EchoMimicV2配置中的路径
+        echomimic_path = api_service.echomimic_integration.echomimic_path
+        ref_images = await api_service.echomimic_integration.get_available_reference_images(echomimic_path)
+        
+        return {"ref_images": ref_images}
+        
+    except Exception as e:
+        logger.error(f"获取参考图像异常: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"获取参考图像失败: {str(e)}")
+
 @router.get("/health")
 async def health_check():
     """健康检查接口"""
     return {"status": "ok", "timestamp": time.time()}
+
+@router.post("/agent", response_model=AgentResponse)
+async def agent_query(request: AgentRequest, api_service: APIService = Depends(get_api_service)):
+    """
+    使用Agent处理用户查询
+    """
+    start_time = time.time()
+    
+    try:
+        # 获取对话上下文
+        context_id = request.conversation_id or str(uuid.uuid4())
+        context = api_service.get_context(context_id)
+        
+        # 检查pipeline是否可用
+        if not api_service.pipeline:
+            raise HTTPException(status_code=503, detail="Agent服务不可用")
+        
+        # 检查Agent是否启用
+        if not api_service.pipeline.use_agent:
+            raise HTTPException(status_code=503, detail="Agent功能未启用")
+        
+        # 处理查询
+        logger.info(f"处理Agent查询: {request.query[:100]}...")
+        
+        # 合并上下文
+        if request.context:
+            merged_context = {**context, **request.context}
+        else:
+            merged_context = context
+        
+        # 调用Agent处理
+        agent_result = await api_service.pipeline.agent_only(
+            request.query,
+            conversation_context=merged_context
+        )
+        
+        if not agent_result:
+            raise HTTPException(status_code=500, detail="Agent处理失败")
+        
+        # 更新上下文
+        api_service.update_context(context_id, {
+            "last_query": request.query,
+            "last_response": agent_result.text
+        })
+        
+        # 提取元数据
+        metadata = agent_result.metadata or {}
+        tools_used = []
+        if "agent_steps" in metadata:
+            # 这里可以从元数据中提取使用的工具信息
+            # 实际实现可能需要根据OpenAI Agent的返回格式调整
+            pass
+        
+        # 计算处理时间
+        took_ms = (time.time() - start_time) * 1000
+        
+        # 返回响应
+        return AgentResponse(
+            text=agent_result.text,
+            took_ms=took_ms,
+            run_id=metadata.get("agent_run_id"),
+            tools_used=tools_used,
+            metadata=metadata
+        )
+        
+    except Exception as e:
+        logger.error(f"Agent处理出错: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Agent处理失败: {str(e)}")

@@ -1,26 +1,62 @@
-You are a full-stack development expert proficient in Python, FastAPI and extensible APIs, JavaScript, React, Node.js, Next.js App Router, Shaden UI, Tailwind CSS and other front-end technologies and development.
+You are an expert in Python, FastAPI, and scalable API development.
 
-You always use the latest stable version of TypeScript, and you are familiar with the latest features and best practices.
-You carefully provide accurate, factual, thoughtful answers, and are a genius at reasoning AI chat to generate code.
-Style and structure
-Naming conventions
-Typescript usage
-UI and style
-Performance optimization
-Other rules to follow:
-Don't be lazy and write all the code to achieve the functions I asked for
+Key Principles
+- Write concise technical responses with accurate Python examples.
+- Use functional, declarative programming; avoid classes whenever possible.
+- Favor iteration and modularity over code duplication.
+- Use descriptive variable names with auxiliary verbs (e.g. is_active, has_permission).
+- Use lowercase with underscores for directories and files (e.g. routers/user_routes.py).
+- Favor named exports of routes and utility functions.
+- Use the receive object, return object (RORO) pattern.
+- Use uv for Python project management and package management
 
-And write concise, technical responses with accurate Python examples. Use functional, declarative programming; avoid classes when possible. Prefer iteration and modularity over code duplication. Use descriptive variable names with auxiliary verbs (e.g. is_active, has_permission). Use lowercase letters with underscores for directories and files (e.g. routers/user_routes.py). Prefer named exports of routes and utility functions. Use the receive-object, return-object (RORO) pattern. Use def for pure functions and async def for asynchronous operations. Use type hints for all function signatures. Prefer Pydantic models over raw dictionaries for input validation.
+Python/FastAPI
+- Use def for pure functions and async def for asynchronous operations.
+- Use type hints for all function signatures. For input validation, prefer Pydantic models over raw dictionaries.
+- File structure: exported routers, subroutes, utilities, static content, types (models, schemas).
+- Avoid unnecessary curly braces in conditionals.
+- For single-line statements in conditionals, omit curly braces.
+- Use concise single-line syntax for simple conditionals (e.g., if condition: do_something()).
 
-File structure: exported routers, subroutes, utilities, static content, types (models, schemas).
+Error Handling and Validation
+- Prioritize handling errors and edge cases:
+- Handle errors and edge cases at the beginning of the function.
+- Use early returns for error conditions to avoid deeply nested if statements.
+- Put the happy path at the end of the function to improve readability.
+- Avoid unnecessary else statements; use the if-return pattern instead.
+- Use guard clauses to handle preconditions and invalid states early.
+- Implement proper error logging and user-friendly error messages.
+- Use custom error types or error factories for consistent error handling.
 
-Avoid unnecessary curly braces in conditionals. For single-line statements in conditionals, omit the curly braces. Use concise single-line syntax for simple conditionals (e.g., if condition: do_something()).
+Dependencies
+- FastAPI
+- Pydantic v2
+- Asynchronous database libraries like asyncpg or aiomysql
+- SQLAlchemy 2.0 (if using ORM features)
 
-Prefer errors and edge cases:
+FastAPI-specific guidelines
+- Use functional components (plain functions) and Pydantic models for input validation and response patterns.
+- Use declarative route definitions with clear return type annotations.
+- Use def for synchronous operations and async def for asynchronous operations.
+- Minimize @app.on_event("startup") and @app.on_event("shutdown"); preferably use lifecycle context managers to manage startup and shutdown events.
+- Use middleware for logging, error monitoring, and performance optimization.
+- Use asynchronous functions for performance optimization of I/O-bound tasks, caching strategies, and lazy loading.
+- Use HTTPException for expected errors and model them as specific HTTP responses.
+- Use middleware for unexpected errors, logging, and error monitoring.
+- Use Pydantic's BaseModel for consistent input/output validation and response patterns.
 
-FastAPI
-Pydantic v2
-Asynchronous database libraries like asyncpg or aiomysql
-SQLAlchemy 2.0 (if using ORM features)
+Performance Optimization
+- Minimize blocking I/O operations; use asynchronous operations for all database calls and external API requests.
+- Implement caching for static and frequently accessed data using tools such as Redis or in-memory storage.
+- Optimize data serialization and deserialization using Pydantic.
+- Use lazy loading techniques for large datasets and large API responses.
 
-Use functional components (plain functions) and Pydantic models for input validation and responsive patterns. Use declarative route definitions with clear return type annotations. Use def for synchronous operations and async def for asynchronous operations. Minimize @app.on_event("startup") and @app.on_event("shutdown"); preferably use lifecycle context managers to manage startup and shutdown events. Use middleware for logging, error monitoring, and performance optimization. Use asynchronous functions for I/O-bound tasks, caching strategies, and lazy loading to optimize performance. Use HTTPException to handle expected errors and model them as specific HTTP responses. Use middleware for unexpected errors, logging, and error monitoring. Use Pydantic's BaseModel for consistent input/output validation and response patterns. Minimize blocking I/O operations; use asynchronous operations for all database calls and external API requests. Implement caching for static and frequently accessed data using tools such as Redis or in-memory storage. Use Pydantic to optimize data serialization and deserialization. Use lazy loading techniques for large data sets and large API responses. For best practices, see Data Models, Path Operations, and Middleware in the FastAPI documentation.
+Key Conventions
+1. Rely on FastAPI's dependency injection system to manage state and shared resources.
+2. Prioritize API performance metrics (response time, latency, throughput).
+3. Limit blocking operations in routes:
+- Favor asynchronous and non-blocking flows.
+- Use dedicated asynchronous functions for database and external API operations.
+- Cleanly structure routes and dependencies to optimize readability and maintainability.
+
+For best practices, see Data Models, Path Operations, and Middleware in the FastAPI documentation.

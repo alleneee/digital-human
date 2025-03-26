@@ -10,6 +10,7 @@ from utils.protocol import AudioMessage, TextMessage
 from engine.asr.asrFactory import ASRFactory
 from engine.llm.llmFactory import LLMFactory
 from engine.tts.ttsFactory import TTSFactory
+from engine.agent.agent_factory import AgentFactory
 from yacs.config import CfgNode as CN
 
 # 配置日志
@@ -17,14 +18,14 @@ logger = logging.getLogger(__name__)
 
 class ConversationPipeline:
     """
-    对话流水线: 语音输入 -> ASR -> LLM -> TTS -> 语音输出
+    对话流水线: 语音输入 -> ASR -> LLM/Agent -> TTS -> 语音输出
     """
     def __init__(self, config: CN):
         """
         初始化对话流水线
         
         参数:
-            config: 配置对象，包含ASR、LLM和TTS引擎的配置
+            config: 配置对象，包含ASR、LLM、TTS和Agent引擎的配置
         """
         self.config = config
         
@@ -55,7 +56,18 @@ class ConversationPipeline:
             logger.warning("TTS引擎未启用")
             self.tts_engine = None
             
-        logger.info("对话流水线初始化完成")
+        # 初始化Agent引擎
+        if hasattr(config, 'AGENT') and config.AGENT.ENABLED:
+            logger.info(f"初始化Agent引擎: {config.AGENT.NAME}")
+            self.agent_engine = AgentFactory.create(config.AGENT)
+        else:
+            logger.warning("Agent引擎未启用")
+            self.agent_engine = None
+        
+        # 是否使用Agent模式
+        self.use_agent = hasattr(config, 'AGENT') and config.AGENT.ENABLED and self.agent_engine is not None
+        
+        logger.info(f"对话流水线初始化完成，{'已启用' if self.use_agent else '未启用'} Agent模式")
         
     async def process(self, 
                      audio_input: AudioMessage, 
@@ -63,96 +75,107 @@ class ConversationPipeline:
                      skip_asr: bool = False,
                      text_input: Optional[str] = None,
                      skip_llm: bool = False,
+                     use_agent: Optional[bool] = None,
                      skip_tts: bool = False) -> Dict[str, Any]:
         """
-        处理完整的对话流程
+        处理语音输入并生成语音响应
         
         参数:
-            audio_input: 输入音频消息
+            audio_input: 语音输入
             conversation_context: 对话上下文
-            skip_asr: 是否跳过ASR步骤（直接使用text_input）
-            text_input: 直接输入的文本（跳过ASR时使用）
+            skip_asr: 是否跳过ASR步骤
+            text_input: 文本输入，如果提供则跳过ASR
             skip_llm: 是否跳过LLM步骤
+            use_agent: 是否使用Agent，默认根据配置决定
             skip_tts: 是否跳过TTS步骤
             
         返回:
-            处理结果字典，包含：
-            - input_text: 输入文本（ASR结果）
-            - response_text: 回复文本（LLM结果）
-            - audio_output: 输出音频（TTS结果）
-            - error: 如果有错误发生
+            包含处理结果的字典
         """
-        result = {}
+        result = {
+            "asr_result": None,
+            "llm_result": None,
+            "agent_result": None,  # 新增agent结果
+            "tts_result": None,
+            "error": None
+        }
+        
+        # 确定是否使用Agent
+        use_agent_mode = self.use_agent if use_agent is None else use_agent
         
         try:
-            # 1. 语音识别阶段
-            if not skip_asr and self.asr_engine:
-                logger.info("开始语音识别")
-                text_result = await self.asr_engine.run(audio_input)
-                if not text_result:
-                    logger.error("ASR识别失败")
-                    return {"error": "语音识别失败"}
-                
-                input_text = text_result.data
-                logger.info(f"ASR识别结果: {input_text}")
-                result["input_text"] = input_text
+            # 步骤1: ASR处理
+            if skip_asr or text_input:
+                asr_text = text_input
+                result["asr_result"] = TextMessage(text=asr_text) if asr_text else None
             else:
-                # 使用直接输入的文本
-                if text_input:
-                    input_text = text_input
-                    result["input_text"] = input_text
-                    logger.info(f"使用直接输入文本: {input_text}")
+                if not self.asr_engine:
+                    raise ValueError("ASR引擎未初始化")
+                
+                logger.info("执行语音识别...")
+                asr_text_message = await self.asr_engine.transcribe(audio_input)
+                result["asr_result"] = asr_text_message
+                asr_text = asr_text_message.text if asr_text_message else None
+                
+                if not asr_text:
+                    logger.warning("语音识别未返回文本")
+                    return result
+            
+            # 步骤2: LLM/Agent处理
+            if skip_llm:
+                logger.info("跳过LLM/Agent处理")
+            else:
+                if use_agent_mode and self.agent_engine:
+                    # 使用Agent处理
+                    logger.info("使用Agent处理文本...")
+                    agent_response = await self.agent_engine.process(
+                        asr_text,
+                        conversation_context=conversation_context
+                    )
+                    result["agent_result"] = agent_response
+                    llm_text = agent_response.text if agent_response else None
+                elif self.llm_engine:
+                    # 使用传统LLM处理
+                    logger.info("使用LLM处理文本...")
+                    llm_response = await self.llm_engine.generate(
+                        asr_text,
+                        conversation_context=conversation_context
+                    )
+                    result["llm_result"] = llm_response
+                    llm_text = llm_response.text if llm_response else None
                 else:
-                    logger.error("没有输入文本且ASR被跳过")
-                    return {"error": "没有有效的输入"}
+                    raise ValueError("LLM引擎和Agent引擎均未初始化")
+                
+                if not llm_text:
+                    logger.warning("LLM/Agent未返回文本")
+                    return result
             
-            # 2. 对话生成阶段
-            if not skip_llm and self.llm_engine:
-                logger.info("开始对话生成")
-                
-                # 创建文本消息对象
-                text_message = TextMessage(data=input_text)
-                
-                # 调用LLM引擎生成回复
-                response = await self.llm_engine.run(text_message, context=conversation_context)
-                
-                if not response:
-                    logger.error("LLM生成失败")
-                    return {**result, "error": "对话生成失败"}
-                
-                response_text = response.data
-                logger.info(f"LLM回复: {response_text}")
-                result["response_text"] = response_text
-            else:
-                # 跳过LLM，使用输入文本作为回复
-                response_text = input_text
-                result["response_text"] = response_text
-                logger.info("跳过LLM处理")
-            
-            # 3. 语音合成阶段
-            if not skip_tts and self.tts_engine:
-                logger.info("开始语音合成")
-                
-                # 创建文本消息对象
-                text_message = TextMessage(data=response_text)
-                
-                # 调用TTS引擎合成语音
-                audio_output = await self.tts_engine.run(text_message)
-                
-                if not audio_output:
-                    logger.error("TTS合成失败")
-                    return {**result, "error": "语音合成失败"}
-                
-                logger.info(f"TTS合成成功，音频长度: {len(audio_output.data)} 字节")
-                result["audio_output"] = audio_output
-            else:
+            # 步骤3: TTS处理
+            if skip_tts:
                 logger.info("跳过TTS处理")
+            else:
+                if not self.tts_engine:
+                    raise ValueError("TTS引擎未初始化")
+                
+                # 获取LLM/Agent输出文本
+                text_to_speak = None
+                if result["agent_result"]:
+                    text_to_speak = result["agent_result"].text
+                elif result["llm_result"]:
+                    text_to_speak = result["llm_result"].text
+                
+                if text_to_speak:
+                    logger.info("执行语音合成...")
+                    tts_audio = await self.tts_engine.synthesize(text_to_speak)
+                    result["tts_result"] = tts_audio
             
             return result
-        
+            
         except Exception as e:
-            logger.error(f"对话处理出错: {str(e)}", exc_info=True)
-            return {**result, "error": str(e)}
+            error_msg = f"对话流水线处理失败: {str(e)}"
+            logger.error(error_msg)
+            result["error"] = error_msg
+            return result
             
     async def asr_only(self, audio_input: AudioMessage) -> Optional[TextMessage]:
         """
@@ -222,4 +245,30 @@ class ConversationPipeline:
             return await self.tts_engine.run(text_input)
         except Exception as e:
             logger.error(f"语音合成出错: {str(e)}")
+            return None
+
+    async def agent_only(self, text_input: Union[str, TextMessage],
+                       conversation_context: Optional[Dict[str, Any]] = None) -> Optional[TextMessage]:
+        """
+        只使用Agent处理文本输入
+        
+        参数:
+            text_input: 文本输入
+            conversation_context: 对话上下文
+            
+        返回:
+            Agent处理结果
+        """
+        if not self.agent_engine:
+            logger.error("Agent引擎未初始化")
+            return None
+            
+        try:
+            logger.info("只使用Agent处理文本...")
+            return await self.agent_engine.process(
+                text_input,
+                conversation_context=conversation_context
+            )
+        except Exception as e:
+            logger.error(f"Agent处理失败: {str(e)}")
             return None

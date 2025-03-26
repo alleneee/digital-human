@@ -1,0 +1,21 @@
+# EchoMimicV2配置
+
+# 路径配置
+echomimic_path: /Users/niko/echomimic_v2  # EchoMimicV2项目路径
+ref_image_path: /Users/niko/echomimic_v2/assets/reference/reference.jpg  # 默认参考图像
+pose_dir_path: /Users/niko/echomimic_v2/assets/halfbody_demo  # 默认姿势数据目录
+output_dir: /Users/niko/echomimic_v2/outputs  # 输出目录
+
+# 视频生成参数
+video_params:
+  width: 512  # 视频宽度
+  height: 512  # 视频高度
+  length: 120  # 视频长度（帧数）
+  steps: 25  # 扩散模型步数
+  sample_rate: 16000  # 音频采样率
+  cfg: 3.5  # 条件尺度因子
+  fps: 25  # 帧率
+  context_frames: 16  # 上下文帧数
+  context_overlap: 4  # 上下文重叠帧数
+  quantization_input: true  # 是否使用量化
+  seed: -1  # 随机种子，-1表示随机生成

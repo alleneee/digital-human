@@ -21,6 +21,7 @@ from api.routes import router as api_router, APIService
 from utils.config import load_config, merge_configs
 from pipelines.conversation import ConversationPipeline
 from pipelines.speech import SpeechProcessor
+from integrations.echomimic import EchoMimicIntegration
 from utils.protocol import AudioMessage, TextMessage, AudioFormatType
 
 # 配置日志
@@ -58,12 +59,13 @@ async def root():
 api_service = None
 pipeline = None
 speech_processor = None
+echomimic_integration = None
 config = None
 
 # 应用启动时执行的初始化操作
 @app.on_event("startup")
 async def startup_event():
-    global api_service, pipeline, speech_processor, config
+    global api_service, pipeline, speech_processor, echomimic_integration, config
     
     try:
         # 解析命令行参数
@@ -82,9 +84,30 @@ async def startup_event():
         pipeline = ConversationPipeline(config)
         await pipeline.setup()
         
+        # 初始化EchoMimicV2集成
+        logger.info("初始化EchoMimicV2集成...")
+        echomimic_config = config.get("echomimic", {})
+        if not echomimic_config and "echomimic" in config.get("engines", {}):
+            echomimic_config = config.engines.echomimic
+        
+        if echomimic_config:
+            try:
+                echomimic_integration = EchoMimicIntegration(echomimic_config)
+                logger.info("EchoMimicV2集成初始化成功")
+            except Exception as e:
+                logger.error(f"EchoMimicV2集成初始化失败: {str(e)}")
+                echomimic_integration = None
+        else:
+            logger.warning("未找到EchoMimicV2配置，集成将不可用")
+            echomimic_integration = None
+        
         # 初始化API服务
         logger.info("初始化API服务...")
-        api_service = APIService(config, pipeline, speech_processor)
+        api_service = APIService()
+        api_service.set_pipeline(pipeline)
+        api_service.set_speech_processor(speech_processor)
+        if echomimic_integration:
+            api_service.set_echomimic_integration(echomimic_integration)
         
         logger.info("应用启动完成!")
         

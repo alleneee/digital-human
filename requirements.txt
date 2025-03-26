@@ -14,3 +14,5 @@ torch>=1.13.0
 torchaudio>=0.13.0
 kokoro>=0.8.4
 soundfile>=0.12.1
+openai-agents>=0.1.0
+yacs>=0.1.8

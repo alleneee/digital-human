@@ -1,0 +1,54 @@
+# Agent配置
+
+AGENT:
+  ENABLED: true
+  NAME: "openai"  # agent类型: openai
+  
+  # OpenAI API设置
+  api_key: "${OPENAI_API_KEY}"  # 从环境变量读取
+  model: "gpt-4o"  # 可选: gpt-4o, gpt-4-turbo, gpt-3.5-turbo
+  
+  # Agent人设
+  name: "数字人助手"
+  instructions: |
+    你是一个友好、专业的AI助手，始终用中文回答问题。
+    你能够帮助用户解决各种问题，提供准确、有用的信息。
+    你会避免提供有害或不适当的内容。
+    当用户问到你不确定的问题时，你会诚实地表示你不知道，而不是编造信息。
+  
+  # 工具配置
+  tools:
+    # 网络搜索工具
+    web_search:
+      enabled: true
+      location:
+        type: "approximate"
+        city: "Shanghai"
+    
+    # 文件搜索工具
+    file_search:
+      enabled: false
+      dirs: ["./docs", "./data"]
+    
+    # 自定义工具
+    custom_tools:
+      - name: "天气查询"
+        enabled: true
+        class: "engine.agent.tools.weather_tool"
+        params: {}
+      
+      - name: "知识库搜索"
+        enabled: true
+        class: "engine.agent.tools.knowledge_base_search"
+        params: {}
+      
+      - name: "网络搜索"
+        enabled: true
+        class: "engine.agent.tools.web_search"
+        params: {} 
+      
+      - name: "增强型网络搜索"
+        enabled: true
+        class: "engine.agent.tools.enhanced_web_search"
+        params: {}
+      
