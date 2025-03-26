@@ -20,10 +20,12 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 # 加载环境变量
 load_dotenv()  # 添加这一行来加载.env文件
 
-# 确保使用正确的API密钥
-os.environ["GOOGLE_API_KEY"] = "AIzaSyCMwymZYRgEe_VSKkZLDirDOi9X2uJnRX4"
-os.environ["GOOGLE_SEARCH_ENGINE_ID"] = "9341ae4a64c3942d5"
-os.environ["FIRECRAWL_API_KEY"] = "fc-e78e5fc62c4041a8a082c15d1743cae9"
+# 确保环境变量已加载，但不再硬编码API密钥
+# 检查必要的环境变量
+required_keys = ["GOOGLE_API_KEY", "GOOGLE_SEARCH_ENGINE_ID", "FIRECRAWL_API_KEY"]
+missing_keys = [key for key in required_keys if not os.environ.get(key)]
+if missing_keys:
+    raise EnvironmentError(f"缺少必要的环境变量: {', '.join(missing_keys)}")
 
 # 直接导入我们自己实现的工具函数
 from engine.agent.tools import enhanced_web_search, _google_search_raw, _select_best_urls, _firecrawl_specific_url
